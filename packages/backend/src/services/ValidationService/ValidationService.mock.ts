@@ -13,8 +13,8 @@ import {
     OrganizationMemberRole,
     SessionUser,
     SupportedDbtAdapter,
-    TablesConfiguration,
     TableSelectionType,
+    TablesConfiguration,
     type DashboardFilters,
 } from '@lightdash/common';
 import { LightdashConfig } from '../../config/parseConfig';
@@ -95,6 +95,7 @@ export const chartForValidation: Awaited<
     customBinDimensions: [],
     customSqlDimensions: [],
     sorts: ['table_dimension'],
+    dashboardUuid: undefined,
 };
 
 export const chartForValidationWithJoinedField: Awaited<

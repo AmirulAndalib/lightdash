@@ -1,4 +1,5 @@
 import {
+    AdditionalMetric,
     ApiErrorPayload,
     GitIntegrationConfiguration,
     PullRequestCreated,
@@ -50,27 +51,6 @@ export class GitIntegrationController extends BaseController {
         isAuthenticated,
         unauthorisedInDemo,
     ])
-    @SuccessResponse('200', 'Success')
-    @Get('/pull-requests/chart/{chartUuid}/fields')
-    @OperationId('CreatePullRequestForChartFields')
-    async CreatePullRequestForChartFields(
-        @Path() projectUuid: string,
-        @Path() chartUuid: string,
-        @Request() req: express.Request,
-    ): Promise<{ status: 'ok'; results: PullRequestCreated }> {
-        this.setStatus(200);
-        return {
-            status: 'ok',
-            results: await this.services
-                .getGitIntegrationService()
-                .createPullRequestForChartFields(
-                    req.user!,
-                    projectUuid,
-                    chartUuid,
-                ),
-        };
-    }
-
     @Middlewares([
         allowApiKeyAuthentication,
         isAuthenticated,
@@ -83,8 +63,8 @@ export class GitIntegrationController extends BaseController {
         @Path() projectUuid: string,
         @Body()
         body: {
-            customMetrics: string[];
-            quoteChar: `"` | `'`; // to be used in the yml dump options
+            customMetrics: AdditionalMetric[];
+            quoteChar?: `"` | `'`; // to be used in the yml dump options
         },
         @Request() req: express.Request,
     ): Promise<{ status: 'ok'; results: PullRequestCreated }> {
@@ -97,7 +77,7 @@ export class GitIntegrationController extends BaseController {
                     req.user!,
                     projectUuid,
                     body.customMetrics,
-                    body.quoteChar,
+                    body.quoteChar || '"',
                 ),
         };
     }

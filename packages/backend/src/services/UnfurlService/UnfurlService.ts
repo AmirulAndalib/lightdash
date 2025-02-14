@@ -226,8 +226,7 @@ export class UnfurlService extends BaseService {
             chartType,
             resourceUuid,
             chartTileUuids: rest.chartTileUuids,
-            // TODO: Add this back once FIXME is solved in saveScreenshot
-            // sqlChartTileUuids: rest.sqlChartTileUuids,
+            sqlChartTileUuids: rest.sqlChartTileUuids,
         };
     }
 
@@ -432,6 +431,30 @@ export class UnfurlService extends BaseService {
 
                     browser = await playwright.chromium.connectOverCDP(
                         browserWSEndpoint,
+                        {
+                            timeout: 1000 * 60 * 30, // 30 minutes
+                            logger: {
+                                isEnabled() {
+                                    return true;
+                                },
+                                log: (name, severity, message, args): void => {
+                                    const logMessage = `[${name}] ${message} ${JSON.stringify(
+                                        args,
+                                    )}`;
+                                    switch (severity) {
+                                        case 'warning':
+                                            this.logger.warn(logMessage);
+                                            break;
+                                        case 'error':
+                                            this.logger.error(logMessage);
+                                            break;
+                                        default:
+                                            this.logger.debug(logMessage);
+                                            break;
+                                    }
+                                },
+                            },
+                        },
                     );
 
                     page = await browser.newPage({
@@ -529,6 +552,7 @@ export class UnfurlService extends BaseService {
 
                         if (lightdashPage === LightdashPage.DASHBOARD) {
                             // Wait for the all charts to load if we are in a dashboard
+
                             const exploreChartResultsPromises =
                                 chartTileUuids?.map((id) => {
                                     const responsePattern = new RegExp(
@@ -537,33 +561,77 @@ export class UnfurlService extends BaseService {
 
                                     return page?.waitForResponse(
                                         responsePattern,
-                                        {
-                                            timeout: 60000,
-                                        },
+                                        { timeout: 60000 },
                                     ); // NOTE: No await here
                                 });
-                            // We wait for the sql charts to load and for the query to finish
-                            /*
-                             * FIXME: wait for /sqlRunner/saved/${id} and /\/sqlRunner\/runPivotQuery/, so that we can successfully capture the SQL charts visualizations
-                             *
-                             * We need to wait for /sqlRunner/saved/${id} so that we can successfully capture the SQL charts visualizations
-                             * We need to wait for /\/sqlRunner\/runPivotQuery/, so that we can successfully capture the SQL charts visualizations
-                             * Figure out how to wait for the Streamed query results from the warehouse when scheduling a dashboard of image type - this works already when exporting a dashboard, but not when scheduling it
-                             */
-                            const sqlChartResultsPromises =
-                                sqlChartTileUuids?.map(
-                                    (id) =>
-                                        page?.waitForResponse(
-                                            /\/sqlRunner\/results/,
-                                            {
-                                                timeout: 60000,
-                                            },
-                                        ), // NOTE: No await here
+
+                            // Create separate arrays for each type of SQL response
+                            let sqlInitialLoadPromises:
+                                | (Promise<playwright.Response> | undefined)[]
+                                | undefined;
+                            let sqlResultsJobPromises:
+                                | (Promise<playwright.Response> | undefined)[]
+                                | undefined;
+                            let sqlResultsPromises:
+                                | (Promise<playwright.Response> | undefined)[]
+                                | undefined;
+                            let sqlPivotPromises:
+                                | (Promise<playwright.Response> | undefined)[]
+                                | undefined;
+
+                            const filteredSqlChartTileUuids =
+                                sqlChartTileUuids?.filter(
+                                    (id): id is string => !!id,
                                 );
+
+                            const hasSqlCharts =
+                                filteredSqlChartTileUuids &&
+                                filteredSqlChartTileUuids.length > 0;
+                            if (hasSqlCharts && page) {
+                                sqlInitialLoadPromises =
+                                    filteredSqlChartTileUuids.map((id) => {
+                                        const responsePattern = new RegExp(
+                                            `/sqlRunner/saved/${id}`,
+                                        );
+                                        return page?.waitForResponse(
+                                            responsePattern,
+                                            { timeout: 60000 },
+                                        );
+                                    });
+
+                                sqlResultsJobPromises =
+                                    filteredSqlChartTileUuids.map(
+                                        (id) =>
+                                            page?.waitForResponse(
+                                                new RegExp(
+                                                    `/sqlRunner/saved/${id}/results-job`,
+                                                ),
+                                                { timeout: 60000 },
+                                            ), // NOTE: No await here
+                                    );
+
+                                // These are shared responses for all SQL charts
+                                sqlResultsPromises = [
+                                    page?.waitForResponse(
+                                        /\/sqlRunner\/results/,
+                                        { timeout: 60000 },
+                                    ), // NOTE: No await here
+                                ];
+
+                                sqlPivotPromises = [
+                                    page?.waitForResponse(
+                                        /\/sqlRunner\/runPivotQuery/,
+                                        { timeout: 60000 },
+                                    ), // NOTE: No await here
+                                ];
+                            }
 
                             chartResultsPromises = [
                                 ...(exploreChartResultsPromises || []),
-                                ...(sqlChartResultsPromises || []),
+                                ...(sqlInitialLoadPromises || []),
+                                ...(sqlResultsJobPromises || []),
+                                ...(sqlResultsPromises || []),
+                                ...(sqlPivotPromises || []),
                             ];
                         } else if (lightdashPage === LightdashPage.CHART) {
                             // Wait for the visualization to load if we are in an saved explore page
@@ -603,6 +671,15 @@ export class UnfurlService extends BaseService {
                     }
 
                     if (lightdashPage === LightdashPage.DASHBOARD) {
+                        // Wait for markdown tiles specifically
+                        const markdownTiles = await page
+                            .locator('.markdown-tile')
+                            .all();
+                        await Promise.all(
+                            markdownTiles.map((tile) =>
+                                tile.waitFor({ state: 'attached' }),
+                            ),
+                        );
                         const loadingChartOverlays = await page
                             .locator('.loading_chart_overlay')
                             .all();
@@ -640,12 +717,13 @@ export class UnfurlService extends BaseService {
                         finalSelector = '.react-grid-layout';
                     }
 
-                    const fullPage = await page.$(finalSelector);
+                    const fullPage = await page.locator(finalSelector);
 
                     if (chartType === ChartType.BIG_NUMBER) {
                         await page.setViewportSize(bigNumberViewport);
                     } else {
                         const fullPageSize = await fullPage?.boundingBox();
+
                         await page.setViewportSize({
                             width: gridWidth ?? viewport.width,
                             height: fullPageSize?.height

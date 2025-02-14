@@ -79,6 +79,10 @@ export type CreateDatabricksCredentials = {
     personalAccessToken: string;
     requireUserCredentials?: boolean;
     startOfWeek?: WeekDay | null;
+    compute?: Array<{
+        name: string;
+        httpPath: string;
+    }>;
 };
 export type DatabricksCredentials = Omit<
     CreateDatabricksCredentials,
@@ -239,6 +243,7 @@ export interface DbtCloudIDEProjectConfig extends DbtProjectConfigBase {
     api_key: string;
     environment_id: string;
     discovery_api_endpoint?: string;
+    tags?: string[];
 }
 
 export interface DbtGithubProjectConfig extends DbtProjectCompilerBase {

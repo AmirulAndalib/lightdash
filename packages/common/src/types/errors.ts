@@ -377,5 +377,28 @@ export class UnexpectedGoogleSheetsError extends LightdashError {
     }
 }
 
+export class GoogleSheetsTransientError extends LightdashError {
+    constructor(
+        message = 'Unexpected error in Google Sheets API',
+        data: { [key: string]: AnyType } = {},
+    ) {
+        super({
+            message,
+            name: 'GoogleSheetsTransientError',
+            statusCode: 500,
+            data,
+        });
+    }
+}
+export class NotImplementedError extends LightdashError {
+    constructor(message = 'Not implemented') {
+        super({
+            message,
+            name: 'NotImplemented',
+            statusCode: 501,
+            data: {},
+        });
+    }
+}
 export const getErrorMessage = (e: unknown) =>
     e instanceof Error ? e.message : `Unknown ${typeof e} error`;

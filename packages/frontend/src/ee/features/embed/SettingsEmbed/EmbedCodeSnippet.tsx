@@ -1,6 +1,7 @@
 import {
     FilterInteractivityValues,
     getFilterInteractivityValue,
+    isDashboardUuidContent,
     type CreateEmbedJwt,
 } from '@lightdash/common';
 import { Tabs } from '@mantine/core';
@@ -21,6 +22,7 @@ const projectUuid = '{{projectUuid}}';
 const data = {
     content: {
         type: 'dashboard',
+        projectUuid: projectUuid,
         dashboardUuid: '{{dashboardUuid}}',
         dashboardFiltersInteractivity: {
             enabled: "{{dashboardFiltersInteractivityEnabled}}",
@@ -28,6 +30,8 @@ const data = {
         },
         canExportCsv: {{canExportCsvEnabled}},
         canExportImages: {{canExportImagesEnabled}},
+        canExportPagePdf: {{canExportPagePdf}},
+        canDateZoom: {{canDateZoom}},
     },
     user: {
         externalId: {{externalId}},
@@ -49,6 +53,7 @@ data = {
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "dashboard",
+        "projectUuid": projectUuid,
         "dashboardUuid": "{{dashboardUuid}}",
         "dashboardFiltersInteractivity": {
             "enabled": "{{dashboardFiltersInteractivityEnabledPython}}",
@@ -56,15 +61,17 @@ data = {
         },
         "canExportCsv": {{canExportCsvEnabledPython}},
         "canExportImages": {{canExportImagesEnabledPython}},
+        "canExportPagePdf": {{canExportPagePdfPython}},
+        "canDateZoom": {{canDateZoomPython}},
     },
     "user": {
-        "externalId": {{externalIdPython}}
+        "externalId": {{externalIdPython}},
         "email": {{emailPython}}
     },
     "userAttributes": {{userAttributes}},
 };
 token = jwt.encode(data, key, algorithm="HS256")
-url = f"{{siteUrl}}/embed/{projectUuid}#{token}"  
+url = f"{{siteUrl}}/embed/{projectUuid}#{token}"
 `,
     [SnippetLanguage.GO]: `
 package main
@@ -87,6 +94,7 @@ func main() {
     type CustomClaims struct {
         Content struct {
             Type                       string \`json:"type"\`
+            ProjectUuid                string \`json:"projectUuid"\`
             DashboardUuid              string \`json:"dashboardUuid"\`
             DashboardFiltersInteractivity struct {
                 Enabled string \`json:"enabled"\`
@@ -94,6 +102,8 @@ func main() {
             } \`json:"dashboardFiltersInteractivity"\`
             CanExportCsv bool \`json:"canExportCsv"\`
             CanExportImages bool \`json:"canExportImages"\`
+            CanExportPagePdf bool \`json:"canExportPagePdf"\`
+            CanDateZoom bool \`json:"canDateZoom"\`
         } \`json:"content"\`
         UserAttributes map[string]string \`json:"userAttributes"\`
         jwt.StandardClaims
@@ -107,6 +117,7 @@ func main() {
     claims := CustomClaims{
         Content: struct {
             Type                       string \`json:"type"\`
+            ProjectUuid                string \`json:"projectUuid"\`
             DashboardUuid              string \`json:"dashboardUuid"\`
             DashboardFiltersInteractivity struct {
                 Enabled string \`json:"enabled"\`
@@ -114,8 +125,11 @@ func main() {
             } \`json:"dashboardFiltersInteractivity"\`
             CanExportCsv bool \`json:"canExportCsv"\`
             CanExportImages bool \`json:"canExportImages"\`
+            CanExportPagePdf bool \`json:"canExportPagePdf"\`
+            CanDateZoom bool \`json:"canDateZoom"\`
         }{
             Type:          "dashboard",
+            ProjectUuid:   projectUuid,
             DashboardUuid: "{{dashboardUuid}}",
             DashboardFiltersInteractivity: struct {
                 Enabled string \`json:"enabled"\`
@@ -126,6 +140,8 @@ func main() {
             },
             CanExportCsv: {{canExportCsvEnabled}},
             CanExportImages: {{canExportImagesEnabled}},
+            CanExportPagePdf: {{canExportPagePdf}},
+            CanDateZoom: {{canDateZoom}},
         },
         User: &struct {
             ExternalId *string \`json:"externalId,omitempty"\`
@@ -175,7 +191,9 @@ const getCodeSnippet = (
         .replace('{{expiresIn}}', data.expiresIn || '1 hour')
         .replace(
             '{{dashboardUuid}}',
-            data.content.dashboardUuid || '{{your dashboard uuid}}',
+            isDashboardUuidContent(data.content)
+                ? data.content.dashboardUuid
+                : '{{your dashboard uuid}}',
         )
         .replace(
             '{{userAttributes}}',
@@ -217,6 +235,11 @@ const getCodeSnippet = (
                   )}"`
                 : 'nil',
         )
+        .replace('{{canDateZoom}}', data.content.canDateZoom ? 'true' : 'false')
+        .replace(
+            '{{canExportPagePdf}}',
+            data.content.canExportPagePdf ? 'true' : 'false',
+        )
         .replace(
             '{{canExportCsvEnabled}}',
             data.content.canExportCsv ? 'true' : 'false',
@@ -224,6 +247,14 @@ const getCodeSnippet = (
         .replace(
             '{{canExportCsvEnabledPython}}',
             data.content.canExportCsv ? 'True' : 'False',
+        )
+        .replace(
+            '{{canDateZoomPython}}',
+            data.content.canDateZoom ? 'True' : 'False',
+        )
+        .replace(
+            '{{canExportPagePdfPython}}',
+            data.content.canExportPagePdf ? 'True' : 'False',
         )
         .replace(
             '{{canExportImagesEnabled}}',

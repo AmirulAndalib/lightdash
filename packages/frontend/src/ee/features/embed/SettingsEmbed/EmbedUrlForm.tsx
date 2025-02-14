@@ -66,6 +66,8 @@ type FormValues = {
     canExportCsv?: boolean;
     canExportImages?: boolean;
     externalId?: string;
+    canExportPagePdf?: boolean;
+    canDateZoom?: boolean;
 } & IntrinsicUserAttributes;
 
 const EmbedUrlForm: FC<{
@@ -92,6 +94,8 @@ const EmbedUrlForm: FC<{
             },
             canExportCsv: false,
             canExportImages: false,
+            canDateZoom: false,
+            canExportPagePdf: true,
         },
         validate: {
             dashboardUuid: (value: undefined | string) => {
@@ -109,6 +113,7 @@ const EmbedUrlForm: FC<{
                 expiresIn: values.expiresIn,
                 content: {
                     type: 'dashboard',
+                    projectUuid,
                     dashboardUuid: values.dashboardUuid!,
                     dashboardFiltersInteractivity: {
                         enabled: values.dashboardFiltersInteractivity?.enabled,
@@ -124,6 +129,8 @@ const EmbedUrlForm: FC<{
                     canExportCsv: values.canExportCsv,
                     canExportImages: values.canExportImages,
                     isPreview,
+                    canDateZoom: values.canDateZoom,
+                    canExportPagePdf: values.canExportPagePdf ?? true,
                 },
                 userAttributes: values.userAttributes.reduce(
                     (acc, item) => ({
@@ -138,7 +145,7 @@ const EmbedUrlForm: FC<{
                 },
             };
         },
-        [],
+        [projectUuid],
     );
 
     const handlePreview = useCallback(async () => {
@@ -276,6 +283,7 @@ const EmbedUrlForm: FC<{
                         }
                     />
                 </Input.Wrapper>
+
                 <Switch
                     {...form.getInputProps(`canExportCsv`)}
                     labelPosition="left"
@@ -285,6 +293,17 @@ const EmbedUrlForm: FC<{
                     {...form.getInputProps(`canExportImages`)}
                     labelPosition="left"
                     label={`Can export Images`}
+                />
+                <Switch
+                    {...form.getInputProps(`canExportPagePdf`)}
+                    labelPosition="left"
+                    label={`Can export page to PDF`}
+                    defaultChecked={true}
+                />
+                <Switch
+                    {...form.getInputProps(`canDateZoom`)}
+                    labelPosition="left"
+                    label={`Can date zoom`}
                 />
                 <Flex justify="flex-end" gap="sm">
                     <Button

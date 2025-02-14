@@ -29,6 +29,7 @@ import {
     IconFolderPlus,
     IconFolders,
     IconInfoCircle,
+    IconKey,
     IconPencil,
     IconPin,
     IconPinnedOff,
@@ -51,15 +52,15 @@ import { DashboardSchedulersModal } from '../../../features/scheduler';
 import { getSchedulerUuidFromUrlParams } from '../../../features/scheduler/utils';
 import { useFeatureFlagEnabled } from '../../../hooks/useFeatureFlagEnabled';
 import { useProject } from '../../../hooks/useProject';
+import { Can } from '../../../providers/Ability';
 import useApp from '../../../providers/App/useApp';
 import useTracking from '../../../providers/Tracking/useTracking';
 import { EventName } from '../../../types/Events';
 import AddTileButton from '../../DashboardTiles/AddTileButton';
-import { Can } from '../Authorization';
 import MantineIcon from '../MantineIcon';
-import DashboardUpdateModal from '../modal/DashboardUpdateModal';
 import PageHeader from '../Page/PageHeader';
 import {
+    InfoContainer,
     PageActionsContainer,
     PageTitleAndDetailsContainer,
 } from '../PageHeader';
@@ -68,6 +69,8 @@ import { UpdatedInfo } from '../PageHeader/UpdatedInfo';
 import ViewInfo from '../PageHeader/ViewInfo';
 import SpaceActionModal from '../SpaceActionModal';
 import { ActionType } from '../SpaceActionModal/types';
+import TextCopy from '../TextCopy';
+import DashboardUpdateModal from '../modal/DashboardUpdateModal';
 import { DashboardRefreshButton } from './DashboardRefreshButton';
 import ShareLinkButton from './ShareLinkButton';
 
@@ -79,6 +82,7 @@ type DashboardHeaderProps = {
     hasNewSemanticLayerChart: boolean;
     isEditMode: boolean;
     isSaving: boolean;
+    isFullScreenFeatureEnabled?: boolean;
     isFullscreen: boolean;
     isPinned: boolean;
     oldestCacheTime?: Date;
@@ -105,6 +109,7 @@ const DashboardHeader = ({
     hasNewSemanticLayerChart,
     isEditMode,
     isSaving,
+    isFullScreenFeatureEnabled,
     isFullscreen,
     isPinned,
     oldestCacheTime,
@@ -244,7 +249,12 @@ const DashboardHeader = ({
                         <Popover.Dropdown maw={500}>
                             <Stack spacing="xs">
                                 {dashboard.description && (
-                                    <Text fz="xs" color="gray.7" fw={500}>
+                                    <Text
+                                        fz="xs"
+                                        color="gray.7"
+                                        fw={500}
+                                        style={{ whiteSpace: 'pre-line' }}
+                                    >
                                         {dashboard.description}
                                     </Text>
                                 )}
@@ -258,6 +268,16 @@ const DashboardHeader = ({
                                     views={dashboard.views}
                                     firstViewedAt={dashboard.firstViewedAt}
                                 />
+
+                                <InfoContainer>
+                                    <MantineIcon icon={IconKey} />
+                                    Slug:
+                                    <TextCopy
+                                        variant="code"
+                                        text={dashboard.slug}
+                                        tooltipLabel="Copy slug"
+                                    />
+                                </InfoContainer>
 
                                 {dashboard.spaceName && (
                                     <SpaceAndDashboardInfo
@@ -364,30 +384,32 @@ const DashboardHeader = ({
                         />
                     )}
 
-                    {!isEditMode && document.fullscreenEnabled && (
-                        <Tooltip
-                            label={
-                                isFullscreen
-                                    ? 'Exit Fullscreen Mode'
-                                    : 'Enter Fullscreen Mode'
-                            }
-                            withinPortal
-                            position="bottom"
-                        >
-                            <ActionIcon
-                                variant="default"
-                                onClick={onToggleFullscreen}
+                    {!isEditMode &&
+                        document.fullscreenEnabled &&
+                        isFullScreenFeatureEnabled && (
+                            <Tooltip
+                                label={
+                                    isFullscreen
+                                        ? 'Exit Fullscreen Mode'
+                                        : 'Enter Fullscreen Mode'
+                                }
+                                withinPortal
+                                position="bottom"
                             >
-                                <MantineIcon
-                                    icon={
-                                        isFullscreen
-                                            ? IconArrowsMinimize
-                                            : IconArrowsMaximize
-                                    }
-                                />
-                            </ActionIcon>
-                        </Tooltip>
-                    )}
+                                <ActionIcon
+                                    variant="default"
+                                    onClick={onToggleFullscreen}
+                                >
+                                    <MantineIcon
+                                        icon={
+                                            isFullscreen
+                                                ? IconArrowsMinimize
+                                                : IconArrowsMaximize
+                                        }
+                                    />
+                                </ActionIcon>
+                            </Tooltip>
+                        )}
 
                     {!!userCanManageDashboard && !isFullscreen && (
                         <Tooltip

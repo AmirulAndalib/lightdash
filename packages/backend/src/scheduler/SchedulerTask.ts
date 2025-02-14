@@ -1,6 +1,5 @@
 import {
     AnyType,
-    assertUnreachable,
     CompileProjectPayload,
     CreateProject,
     CreateSchedulerAndTargets,
@@ -8,8 +7,43 @@ import {
     CreateSchedulerTarget,
     DownloadCsvPayload,
     EmailNotificationPayload,
+    FeatureFlags,
     FieldReferenceError,
     ForbiddenError,
+    GsheetsNotificationPayload,
+    LightdashPage,
+    MissingConfigError,
+    NotEnoughResults,
+    NotificationFrequency,
+    NotificationPayloadBase,
+    QueryExecutionContext,
+    ReplaceCustomFields,
+    ReplaceCustomFieldsPayload,
+    ReplaceCustomFieldsTask,
+    ReplaceableCustomFields,
+    SavedChartDAO,
+    ScheduledDeliveryPayload,
+    SchedulerAndTargets,
+    SchedulerCreateProjectWithCompilePayload,
+    SchedulerFilterRule,
+    SchedulerFormat,
+    SchedulerJobStatus,
+    SchedulerLog,
+    SemanticLayerQueryPayload,
+    SessionUser,
+    SlackInstallationNotFoundError,
+    SlackNotificationPayload,
+    SqlRunnerPayload,
+    SqlRunnerPivotQueryPayload,
+    ThresholdOperator,
+    ThresholdOptions,
+    UnexpectedGoogleSheetsError,
+    UnexpectedServerError,
+    UploadMetricGsheetPayload,
+    ValidateProjectPayload,
+    VizColumn,
+    assertUnreachable,
+    convertReplaceableFieldMatchMapToReplaceCustomFields,
     formatRows,
     friendlyName,
     getCustomLabelsFromTableConfig,
@@ -20,7 +54,6 @@ import {
     getPivotConfig,
     getRequestMethod,
     getSchedulerUuid,
-    GsheetsNotificationPayload,
     indexCatalogJob,
     isChartValidationError,
     isCreateScheduler,
@@ -32,40 +65,14 @@ import {
     isSchedulerGsheetsOptions,
     isSchedulerImageOptions,
     isTableChartConfig,
-    LightdashPage,
-    MissingConfigError,
-    NotEnoughResults,
-    NotificationFrequency,
-    NotificationPayloadBase,
     operatorActionValue,
     pivotResultsAsCsv,
-    QueryExecutionContext,
-    ScheduledDeliveryPayload,
-    SchedulerAndTargets,
-    SchedulerCreateProjectWithCompilePayload,
-    SchedulerFilterRule,
-    SchedulerFormat,
-    SchedulerJobStatus,
-    SchedulerLog,
     semanticLayerQueryJob,
-    SemanticLayerQueryPayload,
-    SessionUser,
-    SlackInstallationNotFoundError,
-    SlackNotificationPayload,
     sqlRunnerJob,
-    SqlRunnerPayload,
     sqlRunnerPivotQueryJob,
-    SqlRunnerPivotQueryPayload,
-    ThresholdOperator,
-    ThresholdOptions,
-    UnexpectedGoogleSheetsError,
-    UnexpectedServerError,
-    UploadMetricGsheetPayload,
-    ValidateProjectPayload,
-    VizColumn,
+    type RunQueryTags,
     type SchedulerIndexCatalogJobPayload,
 } from '@lightdash/common';
-import { instance } from 'apache-arrow/visitor/typecomparator';
 import fs from 'fs/promises';
 import { nanoid } from 'nanoid';
 import slackifyMarkdown from 'slackify-markdown';
@@ -86,8 +93,8 @@ import {
     getNotificationChannelErrorBlocks,
 } from '../clients/Slack/SlackMessageBlocks';
 import { LightdashConfig } from '../config/parseConfig';
-import { AiService } from '../ee/services/AiService/AiService';
 import Logger from '../logging/logger';
+import { isFeatureFlagEnabled } from '../postHog';
 import type { CatalogService } from '../services/CatalogService/CatalogService';
 import { CsvService } from '../services/CsvService/CsvService';
 import { DashboardService } from '../services/DashboardService/DashboardService';
@@ -123,14 +130,6 @@ export type SchedulerTaskArguments = {
     encryptionUtil: EncryptionUtil;
 };
 
-type RunQueryTags = {
-    project_uuid?: string;
-    user_uuid?: string;
-    organization_uuid?: string;
-    chart_uuid?: string;
-    dashboard_uuid?: string;
-    explore_name?: string;
-};
 export default class SchedulerTask {
     protected readonly lightdashConfig: LightdashConfig;
 
@@ -904,6 +903,24 @@ export default class SchedulerTask {
                     organizationUuid: user.organizationUuid,
                 });
             }
+            const canReplaceCustomMetrics = await isFeatureFlagEnabled(
+                FeatureFlags.ReplaceCustomMetricsOnCompile,
+                {
+                    userUuid: user.userUuid,
+                    organizationUuid: user.organizationUuid,
+                },
+                {
+                    throwOnTimeout: false,
+                },
+            );
+            if (canReplaceCustomMetrics) {
+                // Don't wait for replaceCustomFields response
+                void this.schedulerClient.replaceCustomFields({
+                    createdByUserUuid: payload.createdByUserUuid,
+                    projectUuid: payload.projectUuid,
+                    organizationUuid: payload.organizationUuid,
+                });
+            }
         } catch (e) {
             await this.schedulerService.logSchedulerJob({
                 ...baseLog,
@@ -1180,6 +1197,7 @@ export default class SchedulerTask {
                 user_uuid: payload.userUuid,
                 organization_uuid: payload.organizationUuid,
                 explore_name: payload.exploreId,
+                query_context: QueryExecutionContext.GSHEETS,
             };
 
             const { rows } = await this.projectService.runMetricQuery({
@@ -1983,11 +2001,20 @@ export default class SchedulerTask {
                 console.warn(
                     `Disabling Google sheets scheduler with non-retryable error: ${e}`,
                 );
+
                 await this.schedulerService.setSchedulerEnabled(
                     user!, // This error from gdriveClient happens after user initialized
                     schedulerUuid,
                     false,
                 );
+
+                if (user?.email) {
+                    await this.emailClient.sendGoogleSheetsErrorNotificationEmail(
+                        user.email,
+                        scheduler?.name || 'Unknown',
+                        deliveryUrl,
+                    );
+                }
                 return; // Do not cascade error
             }
             throw e; // Cascade error to it can be retried by graphile
@@ -2253,7 +2280,6 @@ export default class SchedulerTask {
                 const { catalogFieldMap } =
                     await this.catalogService.indexCatalog(
                         payload.projectUuid,
-                        payload.explores,
                         payload.userUuid,
                     );
 
@@ -2278,6 +2304,52 @@ export default class SchedulerTask {
                 );
 
                 return {}; // Don't pollute with more details
+            },
+        );
+    }
+
+    protected async replaceCustomFields(
+        jobId: string,
+        scheduledTime: Date,
+        payload: ReplaceCustomFieldsPayload,
+    ) {
+        await this.logWrapper(
+            {
+                task: ReplaceCustomFieldsTask,
+                jobId,
+                scheduledTime,
+                details: {
+                    createdByUserUuid: payload.createdByUserUuid,
+                    projectUuid: payload.projectUuid,
+                    organizationUuid: payload.organizationUuid,
+                },
+            },
+            async (): Promise<{
+                replaceableCustomFields: ReplaceableCustomFields;
+                replaceFields: ReplaceCustomFields;
+                updatedCharts: Array<Pick<SavedChartDAO, 'uuid' | 'name'>>;
+            }> => {
+                const replaceableCustomFields =
+                    await this.projectService.findReplaceableCustomFields(
+                        payload,
+                    );
+                const replaceFields =
+                    convertReplaceableFieldMatchMapToReplaceCustomFields(
+                        replaceableCustomFields,
+                    );
+                const updatedCharts =
+                    await this.projectService.replaceCustomFields({
+                        userUuid: payload.createdByUserUuid,
+                        projectUuid: payload.projectUuid,
+                        organizationUuid: payload.organizationUuid,
+                        replaceFields,
+                        skipChartsUpdatedAfter: scheduledTime,
+                    });
+                return {
+                    replaceableCustomFields,
+                    replaceFields,
+                    updatedCharts,
+                };
             },
         );
     }

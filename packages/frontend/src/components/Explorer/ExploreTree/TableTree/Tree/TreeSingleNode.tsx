@@ -1,4 +1,5 @@
 import {
+    getItemId,
     isAdditionalMetric,
     isCustomDimension,
     isDimension,
@@ -20,9 +21,13 @@ import {
     Text,
     Tooltip,
 } from '@mantine/core';
-import { IconAlertTriangle, IconFilter } from '@tabler/icons-react';
+import {
+    IconAlertTriangle,
+    IconFilter,
+    IconInfoCircle,
+} from '@tabler/icons-react';
 import { darken, lighten } from 'polished';
-import { type FC } from 'react';
+import { memo, useMemo, type FC } from 'react';
 import { useToggle } from 'react-use';
 import { getItemBgColor } from '../../../../../hooks/useColumns';
 import { useFilters } from '../../../../../hooks/useFilters';
@@ -40,7 +45,7 @@ type Props = {
     node: Node;
 };
 
-const TreeSingleNode: FC<Props> = ({ node }) => {
+const TreeSingleNode: FC<Props> = memo(({ node }) => {
     const {
         itemsMap,
         selectedItems,
@@ -48,6 +53,7 @@ const TreeSingleNode: FC<Props> = ({ node }) => {
         searchResults,
         searchQuery,
         missingCustomMetrics,
+        itemsAlerts,
         missingCustomDimensions,
         onItemClick,
     } = useTableTreeContext();
@@ -64,6 +70,15 @@ const TreeSingleNode: FC<Props> = ({ node }) => {
     const isVisible = !isSearching || searchResults.has(node.key);
 
     const item = itemsMap[node.key];
+
+    const metricInfo = useMemo(() => {
+        if (isMetric(item)) {
+            return {
+                type: item.type,
+                sql: item.sql,
+            };
+        }
+    }, [item]);
 
     if (!item || !isVisible) return null;
 
@@ -88,6 +103,8 @@ const TreeSingleNode: FC<Props> = ({ node }) => {
         (isCustomDimension(item) &&
             missingCustomDimensions &&
             missingCustomDimensions.includes(item));
+
+    const alerts = itemsAlerts?.[getItemId(item)];
 
     const description = isField(item) ? item.description : undefined;
 
@@ -161,15 +178,16 @@ const TreeSingleNode: FC<Props> = ({ node }) => {
             onMouseEnter={() => toggleHover(true)}
             onMouseLeave={() => toggleHover(false)}
             label={
-                <Group noWrap>
+                <Group noWrap spacing={'xs'}>
                     <HoverCard
                         openDelay={300}
                         keepMounted={false}
-                        shadow="sm"
+                        shadow="subtle"
                         withinPortal
                         withArrow
                         disabled={!description && !isMissing}
                         position="right"
+                        radius="md"
                         /** Ensures the hover card does not overlap with the right-hand menu. */
                         offset={isFiltered ? 80 : 40}
                     >
@@ -203,11 +221,53 @@ const TreeSingleNode: FC<Props> = ({ node }) => {
                                 <ItemDetailPreview
                                     onViewDescription={onOpenDescriptionView}
                                     description={description}
+                                    metricInfo={metricInfo}
                                 />
                             )}
                         </HoverCard.Dropdown>
                     </HoverCard>
-
+                    {alerts?.infos && alerts.infos.length > 0 ? (
+                        <Tooltip
+                            withinPortal
+                            maw={300}
+                            multiline
+                            label={alerts.infos.join('\n')}
+                        >
+                            <MantineIcon
+                                icon={IconInfoCircle}
+                                color="blue.6"
+                                style={{ flexShrink: 0 }}
+                            />
+                        </Tooltip>
+                    ) : null}
+                    {alerts?.warnings && alerts.warnings.length > 0 ? (
+                        <Tooltip
+                            withinPortal
+                            maw={300}
+                            multiline
+                            label={alerts.warnings.join('\n')}
+                        >
+                            <MantineIcon
+                                icon={IconAlertTriangle}
+                                color="yellow.9"
+                                style={{ flexShrink: 0 }}
+                            />
+                        </Tooltip>
+                    ) : null}
+                    {alerts?.errors && alerts.errors.length > 0 ? (
+                        <Tooltip
+                            withinPortal
+                            maw={300}
+                            multiline
+                            label={alerts.errors.join('\n')}
+                        >
+                            <MantineIcon
+                                icon={IconAlertTriangle}
+                                color="red.6"
+                                style={{ flexShrink: 0 }}
+                            />
+                        </Tooltip>
+                    ) : null}
                     {(isFiltered || isHover) &&
                     !isAdditionalMetric(item) &&
                     isFilterableField(item) ? (
@@ -267,6 +327,6 @@ const TreeSingleNode: FC<Props> = ({ node }) => {
             data-testid={`tree-single-node-${label}`}
         />
     );
-};
+});
 
 export default TreeSingleNode;

@@ -6,8 +6,6 @@ import {
     ChartKind,
     ChartType,
     DbtProjectType,
-    getErrorMessage,
-    getRequestMethod,
     LightdashInstallType,
     LightdashMode,
     LightdashRequestMethodHeader,
@@ -23,6 +21,8 @@ import {
     TableSelectionType,
     ValidateProjectPayload,
     WarehouseTypes,
+    getErrorMessage,
+    getRequestMethod,
     type SemanticLayerType,
 } from '@lightdash/common';
 import Analytics, {
@@ -1111,13 +1111,26 @@ export type GithubInstallEvent = BaseTrack & {
 };
 
 export type WriteBackEvent = BaseTrack & {
-    event: 'write_back.created';
+    event: 'write_back.created' | 'write_back.previewed';
     userId: string;
     properties: {
         name: string;
         organizationId: string;
         projectId: string;
         context: QueryExecutionContext;
+        customMetricsCount?: number;
+    };
+};
+
+export type WriteBackErrorEvent = BaseTrack & {
+    event: 'write_back.error';
+    userId: string;
+    properties: {
+        name: string;
+        organizationId: string;
+        projectId: string;
+        context: QueryExecutionContext;
+        error: string;
     };
 };
 
@@ -1128,6 +1141,28 @@ type CreateTagEvent = BaseTrack & {
         name: string;
         projectId: string;
         organizationId: string;
+        context: 'yaml' | 'ui';
+    };
+};
+
+export type CategoriesAppliedEvent = BaseTrack & {
+    event: 'categories.applied';
+    userId: string;
+    properties: {
+        count: number;
+        projectId: string;
+        organizationId: string;
+        context: 'ui' | 'yaml';
+    };
+};
+
+export type CustomFieldsReplaced = BaseTrack & {
+    event: 'custom_fields.replaced';
+    userId: string;
+    properties: {
+        projectId: string;
+        organizationId: string;
+        chartsCount: number;
     };
 };
 
@@ -1206,8 +1241,11 @@ type TypedEvent =
     | VirtualViewEvent
     | GithubInstallEvent
     | WriteBackEvent
+    | WriteBackErrorEvent
     | SchedulerTimezoneUpdateEvent
-    | CreateTagEvent;
+    | CreateTagEvent
+    | CategoriesAppliedEvent
+    | CustomFieldsReplaced;
 
 type WrapTypedEvent = SemanticLayerView;
 

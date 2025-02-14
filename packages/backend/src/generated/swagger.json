@@ -711,6 +711,89 @@
                 "enum": ["some", "all", "none"],
                 "type": "string"
             },
+            "CommonEmbedJwtContent": {
+                "properties": {
+                    "canExportPagePdf": {
+                        "type": "boolean"
+                    },
+                    "canDateZoom": {
+                        "type": "boolean"
+                    },
+                    "canExportImages": {
+                        "type": "boolean"
+                    },
+                    "canExportCsv": {
+                        "type": "boolean"
+                    },
+                    "dashboardFiltersInteractivity": {
+                        "properties": {
+                            "allowedFilters": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "enabled": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/components/schemas/FilterInteractivityValues"
+                                    },
+                                    {
+                                        "type": "boolean"
+                                    }
+                                ]
+                            }
+                        },
+                        "required": ["enabled"],
+                        "type": "object"
+                    },
+                    "isPreview": {
+                        "type": "boolean"
+                    },
+                    "projectUuid": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": ["dashboard"],
+                        "nullable": false
+                    }
+                },
+                "required": ["type"],
+                "type": "object"
+            },
+            "EmbedJwtContentDashboardUuid": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/CommonEmbedJwtContent"
+                    },
+                    {
+                        "properties": {
+                            "dashboardUuid": {
+                                "type": "string"
+                            }
+                        },
+                        "required": ["dashboardUuid"],
+                        "type": "object"
+                    }
+                ]
+            },
+            "EmbedJwtContentDashboardSlug": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/CommonEmbedJwtContent"
+                    },
+                    {
+                        "properties": {
+                            "dashboardSlug": {
+                                "type": "string"
+                            }
+                        },
+                        "required": ["dashboardSlug"],
+                        "type": "object"
+                    }
+                ]
+            },
             "CreateEmbedJwt": {
                 "properties": {
                     "expiresIn": {
@@ -735,49 +818,14 @@
                         "type": "object"
                     },
                     "content": {
-                        "properties": {
-                            "canExportImages": {
-                                "type": "boolean"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EmbedJwtContentDashboardUuid"
                             },
-                            "canExportCsv": {
-                                "type": "boolean"
-                            },
-                            "dashboardFiltersInteractivity": {
-                                "properties": {
-                                    "allowedFilters": {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    "enabled": {
-                                        "anyOf": [
-                                            {
-                                                "$ref": "#/components/schemas/FilterInteractivityValues"
-                                            },
-                                            {
-                                                "type": "boolean"
-                                            }
-                                        ]
-                                    }
-                                },
-                                "required": ["enabled"],
-                                "type": "object"
-                            },
-                            "isPreview": {
-                                "type": "boolean"
-                            },
-                            "dashboardUuid": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "string",
-                                "enum": ["dashboard"],
-                                "nullable": false
+                            {
+                                "$ref": "#/components/schemas/EmbedJwtContentDashboardSlug"
                             }
-                        },
-                        "required": ["dashboardUuid", "type"],
-                        "type": "object"
+                        ]
                     }
                 },
                 "required": ["content"],
@@ -1750,7 +1798,14 @@
                         "format": "double"
                     },
                     "format": {
-                        "$ref": "#/components/schemas/Format"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Format"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "groupLabel": {
                         "type": "string",
@@ -2140,7 +2195,14 @@
                         "$ref": "#/components/schemas/CompactOrAlias"
                     },
                     "format": {
-                        "$ref": "#/components/schemas/Format"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Format"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "table": {
                         "type": "string"
@@ -2681,6 +2743,9 @@
             },
             "Series": {
                 "properties": {
+                    "isFilteredOut": {
+                        "type": "boolean"
+                    },
                     "markLine": {
                         "$ref": "#/components/schemas/MarkLine"
                     },
@@ -3148,15 +3213,47 @@
                 "required": ["rules", "color", "target"],
                 "type": "object"
             },
-            "ConditionalFormattingWithRange": {
+            "ConditionalFormattingColorRange": {
                 "properties": {
-                    "max": {
+                    "steps": {
                         "type": "number",
                         "format": "double"
                     },
+                    "end": {
+                        "type": "string"
+                    },
+                    "start": {
+                        "type": "string"
+                    }
+                },
+                "required": ["steps", "end", "start"],
+                "type": "object"
+            },
+            "ConditionalFormattingMinMax_number-or-auto_": {
+                "properties": {
+                    "max": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "format": "double"
+                            },
+                            {
+                                "type": "string",
+                                "enum": ["auto"]
+                            }
+                        ]
+                    },
                     "min": {
-                        "type": "number",
-                        "format": "double"
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "format": "double"
+                            },
+                            {
+                                "type": "string",
+                                "enum": ["auto"]
+                            }
+                        ]
                     }
                 },
                 "required": ["max", "min"],
@@ -3165,24 +3262,10 @@
             "ConditionalFormattingConfigWithColorRange": {
                 "properties": {
                     "rule": {
-                        "$ref": "#/components/schemas/ConditionalFormattingWithRange"
+                        "$ref": "#/components/schemas/ConditionalFormattingMinMax_number-or-auto_"
                     },
                     "color": {
-                        "properties": {
-                            "steps": {
-                                "type": "number",
-                                "enum": [5],
-                                "nullable": false
-                            },
-                            "end": {
-                                "type": "string"
-                            },
-                            "start": {
-                                "type": "string"
-                            }
-                        },
-                        "required": ["steps", "end", "start"],
-                        "type": "object"
+                        "$ref": "#/components/schemas/ConditionalFormattingColorRange"
                     },
                     "target": {
                         "allOf": [
@@ -3577,7 +3660,14 @@
                         "format": "double"
                     },
                     "format": {
-                        "$ref": "#/components/schemas/Format"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Format"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "groupLabel": {
                         "type": "string",
@@ -3706,7 +3796,14 @@
                         "format": "double"
                     },
                     "format": {
-                        "$ref": "#/components/schemas/Format"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Format"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "groupLabel": {
                         "type": "string",
@@ -3912,6 +4009,9 @@
                         "type": "string"
                     },
                     "ymlPath": {
+                        "type": "string"
+                    },
+                    "databricksCompute": {
                         "type": "string"
                     },
                     "warehouse": {
@@ -4140,7 +4240,14 @@
                         "format": "double"
                     },
                     "format": {
-                        "$ref": "#/components/schemas/Format"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Format"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "groupLabel": {
                         "type": "string",
@@ -4222,7 +4329,14 @@
                         "format": "double"
                     },
                     "format": {
-                        "$ref": "#/components/schemas/Format"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Format"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "groupLabel": {
                         "type": "string",
@@ -4383,6 +4497,10 @@
                 },
                 "required": ["results", "status"],
                 "type": "object"
+            },
+            "DateGranularity": {
+                "enum": ["Day", "Week", "Month", "Quarter", "Year"],
+                "type": "string"
             },
             "FieldValueSearchResult": {
                 "properties": {
@@ -7772,6 +7890,11 @@
                     }
                 ]
             },
+            "ReplaceCustomFieldsTaskType": {
+                "type": "string",
+                "enum": ["replaceCustomFields"],
+                "nullable": false
+            },
             "SchedulerJobStatus": {
                 "enum": ["scheduled", "started", "completed", "error"],
                 "type": "string"
@@ -7809,22 +7932,29 @@
                         "type": "string"
                     },
                     "task": {
-                        "type": "string",
-                        "enum": [
-                            "handleScheduledDelivery",
-                            "sendEmailNotification",
-                            "sendSlackNotification",
-                            "uploadGsheets",
-                            "downloadCsv",
-                            "uploadGsheetFromQuery",
-                            "createProjectWithCompile",
-                            "compileProject",
-                            "testAndCompileProject",
-                            "validateProject",
-                            "sqlRunner",
-                            "sqlRunnerPivotQuery",
-                            "semanticLayer",
-                            "indexCatalog"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReplaceCustomFieldsTaskType"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "handleScheduledDelivery",
+                                    "sendEmailNotification",
+                                    "sendSlackNotification",
+                                    "uploadGsheets",
+                                    "downloadCsv",
+                                    "uploadGsheetFromQuery",
+                                    "createProjectWithCompile",
+                                    "compileProject",
+                                    "testAndCompileProject",
+                                    "validateProject",
+                                    "sqlRunner",
+                                    "sqlRunnerPivotQuery",
+                                    "semanticLayer",
+                                    "indexCatalog"
+                                ]
+                            }
                         ]
                     }
                 },
@@ -8046,10 +8176,6 @@
                 },
                 "required": ["results", "status"],
                 "type": "object"
-            },
-            "DateGranularity": {
-                "enum": ["Day", "Week", "Month", "Quarter", "Year"],
-                "type": "string"
             },
             "MetricQueryRequest": {
                 "properties": {
@@ -8763,6 +8889,12 @@
                     },
                     "discovery_api_endpoint": {
                         "type": "string"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
                     }
                 },
                 "required": ["type", "api_key", "environment_id"],
@@ -9332,6 +9464,21 @@
                     },
                     "httpPath": {
                         "type": "string"
+                    },
+                    "compute": {
+                        "items": {
+                            "properties": {
+                                "httpPath": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": ["httpPath", "name"],
+                            "type": "object"
+                        },
+                        "type": "array"
                     }
                 },
                 "required": ["type", "database", "serverHostName", "httpPath"],
@@ -11988,7 +12135,14 @@
                         "format": "double"
                     },
                     "format": {
-                        "$ref": "#/components/schemas/Format"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Format"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "groupLabel": {
                         "type": "string",
@@ -12728,6 +12882,9 @@
                     },
                     "targetDatabase": {
                         "$ref": "#/components/schemas/SupportedDbtAdapter"
+                    },
+                    "databricksCompute": {
+                        "type": "string"
                     },
                     "ymlPath": {
                         "type": "string"
@@ -14583,7 +14740,7 @@
     },
     "info": {
         "title": "Lightdash API",
-        "version": "0.1469.3",
+        "version": "0.1496.2",
         "description": "Open API documentation for all public Lightdash API endpoints. # Authentication Before you get started, you might need to create a Personal Access Token to authenticate via the API. You can create a token by following this guide: https://docs.lightdash.com/references/personal_tokens\n",
         "license": {
             "name": "MIT"
@@ -19433,6 +19590,47 @@
                 }
             }
         },
+        "/api/v1/org/users/email/{email}": {
+            "get": {
+                "operationId": "GetOrganizationMemberByEmail",
+                "responses": {
+                    "200": {
+                        "description": "Ok",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiOrganizationMemberProfile"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorPayload"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "Get the member profile for a user in the current user's organization by email",
+                "tags": ["Organizations"],
+                "security": [],
+                "parameters": [
+                    {
+                        "description": "the email of the user",
+                        "in": "path",
+                        "name": "email",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ]
+            }
+        },
         "/api/v1/org/user/{userUuid}": {
             "delete": {
                 "operationId": "DeleteOrganizationMember",
@@ -20620,64 +20818,6 @@
                 ]
             }
         },
-        "/api/v1/projects/{projectUuid}/git-integration/pull-requests/chart/{chartUuid}/fields": {
-            "get": {
-                "operationId": "CreatePullRequestForChartFields",
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "results": {
-                                            "$ref": "#/components/schemas/PullRequestCreated"
-                                        },
-                                        "status": {
-                                            "type": "string",
-                                            "enum": ["ok"],
-                                            "nullable": false
-                                        }
-                                    },
-                                    "required": ["results", "status"],
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "default": {
-                        "description": "Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorPayload"
-                                }
-                            }
-                        }
-                    }
-                },
-                "tags": ["Git Integration"],
-                "security": [],
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "projectUuid",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "in": "path",
-                        "name": "chartUuid",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ]
-            }
-        },
         "/api/v1/projects/{projectUuid}/git-integration/pull-requests/custom-metrics": {
             "post": {
                 "operationId": "CreatePullRequestForCustomMetrics",
@@ -20738,12 +20878,12 @@
                                     },
                                     "customMetrics": {
                                         "items": {
-                                            "type": "string"
+                                            "$ref": "#/components/schemas/AdditionalMetric"
                                         },
                                         "type": "array"
                                     }
                                 },
-                                "required": ["quoteChar", "customMetrics"],
+                                "required": ["customMetrics"],
                                 "type": "object"
                             }
                         }

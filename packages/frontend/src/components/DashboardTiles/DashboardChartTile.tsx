@@ -1,8 +1,8 @@
 import { subject } from '@casl/ability';
 import {
     ChartType,
-    createDashboardFilterRuleFromField,
     DashboardTileTypes,
+    createDashboardFilterRuleFromField,
     getCustomLabelsFromTableConfig,
     getDimensions,
     getFields,
@@ -18,11 +18,11 @@ import {
     type ApiChartAndResults,
     type ApiError,
     type Dashboard,
-    type DashboardChartTile as IDashboardChartTile,
     type DashboardFilterRule,
     type DashboardFilters,
     type Field,
     type FilterDashboardToRule,
+    type DashboardChartTile as IDashboardChartTile,
     type ItemsMap,
     type PivotReference,
     type ResultValue,
@@ -74,15 +74,11 @@ import useToaster from '../../hooks/toaster/useToaster';
 import { getExplorerUrlFromCreateSavedChartVersion } from '../../hooks/useExplorerRoute';
 import { useDuplicateChartMutation } from '../../hooks/useSavedQuery';
 import { useCreateShareMutation } from '../../hooks/useShare';
+import { Can } from '../../providers/Ability';
 import useApp from '../../providers/App/useApp';
 import useDashboardContext from '../../providers/Dashboard/useDashboardContext';
 import useTracking from '../../providers/Tracking/useTracking';
 import { EventName } from '../../types/Events';
-import { Can } from '../common/Authorization';
-import { getConditionalRuleLabel } from '../common/Filters/FilterInputs/utils';
-import MantineIcon from '../common/MantineIcon';
-import MoveChartThatBelongsToDashboardModal from '../common/modal/MoveChartThatBelongsToDashboardModal';
-import SuboptimalState from '../common/SuboptimalState/SuboptimalState';
 import { FilterDashboardTo } from '../DashboardFilter/FilterDashboardTo';
 import ExportCSVModal from '../ExportCSV/ExportCSVModal';
 import LightdashVisualization from '../LightdashVisualization';
@@ -94,6 +90,10 @@ import UnderlyingDataModal from '../MetricQueryData/UnderlyingDataModal';
 import { useMetricQueryDataContext } from '../MetricQueryData/useMetricQueryDataContext';
 import { getDataFromChartClick } from '../MetricQueryData/utils';
 import { type EchartSeriesClickEvent } from '../SimpleChart';
+import { getConditionalRuleLabel } from '../common/Filters/FilterInputs/utils';
+import MantineIcon from '../common/MantineIcon';
+import SuboptimalState from '../common/SuboptimalState/SuboptimalState';
+import MoveChartThatBelongsToDashboardModal from '../common/modal/MoveChartThatBelongsToDashboardModal';
 import { DashboardExportImage } from './DashboardExportImage';
 import { DashboardMinimalDownloadCsv } from './DashboardMinimalDownloadCsv';
 import EditChartMenuItem from './EditChartMenuItem';
@@ -297,6 +297,8 @@ interface DashboardChartTileMainProps
     onAddTiles?: (tiles: Dashboard['tiles'][number][]) => void;
     canExportCsv?: boolean;
     canExportImages?: boolean;
+    canExportPagePdf?: boolean;
+    canDateZoom?: boolean;
 }
 
 const DashboardChartTileMain: FC<DashboardChartTileMainProps> = (props) => {

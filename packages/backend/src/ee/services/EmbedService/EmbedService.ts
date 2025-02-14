@@ -1,6 +1,5 @@
 import { subject } from '@casl/ability';
 import {
-    addDashboardFiltersToMetricQuery,
     AndFilterGroup,
     CommercialFeatureFlags,
     CompiledDimension,
@@ -9,6 +8,7 @@ import {
     Dashboard,
     DashboardAvailableFilters,
     DashboardFilters,
+    DateGranularity,
     DecodedEmbed,
     EmbedJwt,
     EmbedJwtSchema,
@@ -16,34 +16,38 @@ import {
     Explore,
     ExploreError,
     FieldValueSearchResult,
-    FilterableDimension,
     FilterGroupItem,
     FilterOperator,
-    findFieldByIdInExplore,
+    FilterableDimension,
     ForbiddenError,
+    InteractivityOptions,
+    IntrinsicUserAttributes,
+    MetricQuery,
+    NotExistsError,
+    NotFoundError,
+    ParameterError,
+    QueryExecutionContext,
+    SavedChartsInfoForDashboardAvailableFilters,
+    SessionUser,
+    UserAttributeValueMap,
+    addDashboardFiltersToMetricQuery,
+    findFieldByIdInExplore,
     formatRows,
     getDashboardFiltersForTileAndTables,
     getDimensions,
     getErrorMessage,
     getFilterInteractivityValue,
     getItemId,
-    InteractivityOptions,
-    IntrinsicUserAttributes,
     isChartTile,
     isDashboardChartTileType,
+    isDashboardSlugContent,
     isDashboardSqlChartTile,
+    isDashboardUuidContent,
     isDimension,
     isExploreError,
-    isFilterableDimension,
     isFilterInteractivityEnabled,
     isFilterRule,
-    MetricQuery,
-    NotExistsError,
-    ParameterError,
-    QueryExecutionContext,
-    SavedChartsInfoForDashboardAvailableFilters,
-    SessionUser,
-    UserAttributeValueMap,
+    isFilterableDimension,
     type LightdashUser,
 } from '@lightdash/common';
 import * as Sentry from '@sentry/node';
@@ -238,18 +242,24 @@ export class EmbedService extends BaseService {
             try {
                 EmbedJwtSchema.parse(decodedToken);
             } catch (e) {
+                const errorIdentifier = isDashboardUuidContent(
+                    decodedToken.content,
+                )
+                    ? decodedToken.content.dashboardUuid
+                    : decodedToken.content.dashboardSlug;
+
                 if (e instanceof z.ZodError) {
                     const zodErrors = e.issues
                         .map((issue) => issue.message)
                         .join(', ');
                     this.logger.error(
-                        `Invalid embed token ${decodedToken.content.dashboardUuid}: ${zodErrors}`,
+                        `Invalid embed token ${errorIdentifier}: ${zodErrors}`,
                     );
                 }
                 this.logger.error(
-                    `Invalid embed token ${
-                        decodedToken.content.dashboardUuid
-                    }: ${getErrorMessage(e)}`,
+                    `Invalid embed token ${errorIdentifier}: ${getErrorMessage(
+                        e,
+                    )}`,
                 );
                 Sentry.captureException(e);
             }
@@ -289,6 +299,30 @@ export class EmbedService extends BaseService {
         if (!isEnabled.enabled) throw new ForbiddenError('Feature not enabled');
     }
 
+    private async getDashboardUuidFromContent(
+        decodedToken: EmbedJwt,
+        projectUuid: string,
+    ) {
+        if (isDashboardSlugContent(decodedToken.content)) {
+            const dashboard = (
+                await this.dashboardModel.find({
+                    projectUuid,
+                    slug: decodedToken.content.dashboardSlug,
+                })
+            )[0];
+
+            if (!dashboard) {
+                throw new NotFoundError(
+                    `Dashboard ${decodedToken.content.dashboardSlug} not found`,
+                );
+            }
+
+            return dashboard.uuid;
+        }
+
+        return decodedToken.content.dashboardUuid;
+    }
+
     async getDashboard(
         projectUuid: string,
         embedToken: string,
@@ -298,14 +332,18 @@ export class EmbedService extends BaseService {
         const { encodedSecret, dashboardUuids, user } =
             await this.embedModel.get(projectUuid);
         const decodedToken = this.decodeJwt(embedToken, encodedSecret);
+        const dashboardUuid = await this.getDashboardUuidFromContent(
+            decodedToken,
+            projectUuid,
+        );
+
         if (checkPermissions)
             await EmbedService._permissionsGetDashboard(
-                decodedToken.content.dashboardUuid,
+                dashboardUuid,
                 dashboardUuids,
             );
-        const dashboard = await this.dashboardModel.getById(
-            decodedToken.content.dashboardUuid,
-        );
+
+        const dashboard = await this.dashboardModel.getById(dashboardUuid);
 
         await this.isFeatureEnabled({
             userUuid: user.userUuid,
@@ -334,6 +372,8 @@ export class EmbedService extends BaseService {
                 ).length,
                 canExportCsv: decodedToken.content.canExportCsv,
                 canExportImages: decodedToken.content.canExportImages,
+                canExportPagePdf: decodedToken.content.canExportPagePdf ?? true,
+                canDateZoom: decodedToken.content.canDateZoom,
                 ...(decodedToken.content.dashboardFiltersInteractivity
                     ? {
                           dashboardFiltersInteractivity: {
@@ -357,6 +397,8 @@ export class EmbedService extends BaseService {
                 decodedToken.content.dashboardFiltersInteractivity,
             canExportCsv: decodedToken.content.canExportCsv,
             canExportImages: decodedToken.content.canExportImages,
+            canExportPagePdf: decodedToken.content.canExportPagePdf ?? true, // enabled by default for backwards compatibility
+            canDateZoom: decodedToken.content.canDateZoom,
         };
     }
 
@@ -388,6 +430,11 @@ export class EmbedService extends BaseService {
             filters: CompiledDimension[];
         }[] = [];
 
+        const dashboardUuid = await this.getDashboardUuidFromContent(
+            decodedToken,
+            projectUuid,
+        );
+
         const savedQueryUuids = savedChartUuidsAndTileUuids.map(
             ({ savedChartUuid }) => savedChartUuid,
         );
@@ -398,7 +445,7 @@ export class EmbedService extends BaseService {
                     projectUuid,
                     chartUuid,
                     dashboardUuids,
-                    decodedToken.content.dashboardUuid,
+                    dashboardUuid,
                 ),
             );
 
@@ -523,6 +570,7 @@ export class EmbedService extends BaseService {
         explore,
         queryTags,
         embedJwt,
+        dateZoomGranularity,
     }: {
         organizationUuid: string;
         projectUuid: string;
@@ -530,6 +578,7 @@ export class EmbedService extends BaseService {
         explore: Explore;
         queryTags: Record<string, string>;
         embedJwt: EmbedJwt;
+        dateZoomGranularity?: DateGranularity;
     }) {
         const credentials =
             await this.projectModel.getWarehouseCredentialsForProject(
@@ -540,6 +589,10 @@ export class EmbedService extends BaseService {
             await this.projectService._getWarehouseClient(
                 projectUuid,
                 credentials,
+                {
+                    snowflakeVirtualWarehouse: explore.warehouse,
+                    databricksCompute: explore.databricksCompute,
+                },
             );
         const orgUserAttributes = await this.userAttributesModel.find({
             organizationUuid,
@@ -583,7 +636,6 @@ export class EmbedService extends BaseService {
 
         // Filter the explore access and fields based on the user attributes
         const filteredExplore = getFilteredExplore(explore, userAttributes);
-
         const compiledQuery = await ProjectService._compileQuery(
             metricQuery,
             filteredExplore,
@@ -591,6 +643,7 @@ export class EmbedService extends BaseService {
             intrinsicUserAttributes,
             userAttributes,
             this.lightdashConfig.query.timezone || 'UTC',
+            dateZoomGranularity,
         );
 
         const results =
@@ -612,6 +665,7 @@ export class EmbedService extends BaseService {
         embedToken: string,
         tileUuid: string,
         dashboardFilters?: DashboardFilters,
+        dateZoomGranularity?: DateGranularity,
         checkPermissions: boolean = true,
     ) {
         const { encodedSecret, dashboardUuids, user } =
@@ -619,9 +673,12 @@ export class EmbedService extends BaseService {
 
         const decodedToken = this.decodeJwt(embedToken, encodedSecret);
 
-        const dashboard = await this.dashboardModel.getById(
-            decodedToken.content.dashboardUuid,
+        const dashboardUuid = await this.getDashboardUuidFromContent(
+            decodedToken,
+            projectUuid,
         );
+
+        const dashboard = await this.dashboardModel.getById(dashboardUuid);
 
         const tile = dashboard.tiles
             .filter(isChartTile)
@@ -629,7 +686,7 @@ export class EmbedService extends BaseService {
 
         if (!tile) {
             throw new ParameterError(
-                `Tile ${tileUuid} not found in dashboard ${decodedToken.content.dashboardUuid}`,
+                `Tile ${tileUuid} not found in dashboard ${dashboardUuid}`,
             );
         }
         const chartUuid = tile.properties.savedChartUuid;
@@ -651,7 +708,7 @@ export class EmbedService extends BaseService {
                 projectUuid,
                 chartUuid,
                 dashboardUuids,
-                decodedToken.content.dashboardUuid,
+                dashboardUuid,
             );
 
         const exploreId = chart.tableName;
@@ -698,7 +755,7 @@ export class EmbedService extends BaseService {
             properties: {
                 organizationId: organizationUuid,
                 projectId: projectUuid,
-                dashboardId: decodedToken.content.dashboardUuid,
+                dashboardId: dashboardUuid,
                 chartId: chartUuid,
                 externalId,
             },
@@ -716,6 +773,7 @@ export class EmbedService extends BaseService {
             explore,
             queryTags,
             embedJwt: decodedToken,
+            dateZoomGranularity,
         });
 
         return {
@@ -851,13 +909,15 @@ export class EmbedService extends BaseService {
         const { encodedSecret, dashboardUuids, user } =
             await this.embedModel.get(projectUuid);
         const embedJwt = this.decodeJwt(embedToken, encodedSecret);
+        const dashboardUuid = await this.getDashboardUuidFromContent(
+            embedJwt,
+            projectUuid,
+        );
         await EmbedService._permissionsGetDashboard(
-            embedJwt.content.dashboardUuid,
+            dashboardUuid,
             dashboardUuids,
         );
-        const dashboard = await this.dashboardModel.getById(
-            embedJwt.content.dashboardUuid,
-        );
+        const dashboard = await this.dashboardModel.getById(dashboardUuid);
         const dashboardFilters = dashboard.filters.dimensions;
         const filter = dashboardFilters.find((f) => f.id === filterUuid);
         if (!filter) {
