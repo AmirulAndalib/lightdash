@@ -1,3 +1,98 @@
+## [0.2143.3](https://github.com/lightdash/lightdash/compare/0.2143.2...0.2143.3) (2025-11-05)
+
+
+### Bug Fixes
+
+* improve SCIM role display names and update role counts ([#17879](https://github.com/lightdash/lightdash/issues/17879)) ([7497a84](https://github.com/lightdash/lightdash/commit/7497a8442446343e575346db31efc9501373c425))
+
+## [0.2143.2](https://github.com/lightdash/lightdash/compare/0.2143.1...0.2143.2) (2025-11-05)
+
+
+### Performance Improvements
+
+* optimize array operations to avoid O(n²) complexity ([#17885](https://github.com/lightdash/lightdash/issues/17885)) ([0904fe7](https://github.com/lightdash/lightdash/commit/0904fe701e6950b3772c5611db897234b42663cf))
+
+## [0.2143.1](https://github.com/lightdash/lightdash/compare/0.2143.0...0.2143.1) (2025-11-05)
+
+
+### Bug Fixes
+
+* scheduled deliveries weren't taking into account the tile targets ([#17893](https://github.com/lightdash/lightdash/issues/17893)) ([b997202](https://github.com/lightdash/lightdash/commit/b99720283617fa9aa88f411c9598419e97ca5610))
+
+# [0.2143.0](https://github.com/lightdash/lightdash/compare/0.2142.0...0.2143.0) (2025-11-05)
+
+
+### Features
+
+* include project roles in SCIM user responses ([#17872](https://github.com/lightdash/lightdash/issues/17872)) ([fcec1de](https://github.com/lightdash/lightdash/commit/fcec1de35340e554eeb26ab68507fd3ff0860b21))
+
+# [0.2142.0](https://github.com/lightdash/lightdash/compare/0.2141.1...0.2142.0) (2025-11-05)
+
+
+### Bug Fixes
+
+* fix stack 100% when using already a % number ([#17882](https://github.com/lightdash/lightdash/issues/17882)) ([b90995e](https://github.com/lightdash/lightdash/commit/b90995eb3512aec76a9c16075618d47151b7613d))
+
+
+### Features
+
+* add find_content tool to McpService ([#17855](https://github.com/lightdash/lightdash/issues/17855)) ([f808ace](https://github.com/lightdash/lightdash/commit/f808acec3dc58e3f4af2036e655e3845d67d16b5))
+* add list_explores tool for mcp ([#17878](https://github.com/lightdash/lightdash/issues/17878)) ([fb3e357](https://github.com/lightdash/lightdash/commit/fb3e3572459343c7cb1b56ae99405a65f72b28d4))
+* databricks oauth on CLI ([#17761](https://github.com/lightdash/lightdash/issues/17761)) ([f9205ee](https://github.com/lightdash/lightdash/commit/f9205ee95403b653482bffba3b2c00c242a1528c))
+* pass availableExplores via experimental_context ([#17839](https://github.com/lightdash/lightdash/issues/17839)) ([9ccb505](https://github.com/lightdash/lightdash/commit/9ccb505c0e61d289639de2853f1b208547750cbe))
+* remove type field from mcp tool schemas ([#17877](https://github.com/lightdash/lightdash/issues/17877)) ([f4d72ca](https://github.com/lightdash/lightdash/commit/f4d72cad2a3f6b171b226f0cd82cdd11760bbcf7))
+* validate explore names in AI agent findExplores tool ([#17752](https://github.com/lightdash/lightdash/issues/17752)) ([b92b8b5](https://github.com/lightdash/lightdash/commit/b92b8b58a44d31efe1bf5c527ca9f8bf85562a15))
+
+## [0.2141.1](https://github.com/lightdash/lightdash/compare/0.2141.0...0.2141.1) (2025-11-05)
+
+
+### Bug Fixes
+
+* cancelling edit chart should keep header ([#17876](https://github.com/lightdash/lightdash/issues/17876)) ([c38e04c](https://github.com/lightdash/lightdash/commit/c38e04cd2bdd2ed610362af50ad029b2ae7d0940))
+* revert "feat: detect dangling dashboard filters for tables not used by any chart ([#17777](https://github.com/lightdash/lightdash/issues/17777))" ([#17886](https://github.com/lightdash/lightdash/issues/17886)) ([861f85a](https://github.com/lightdash/lightdash/commit/861f85acbd4c5d13f978823daa917e2c18780dd2))
+
+# [0.2141.0](https://github.com/lightdash/lightdash/compare/0.2140.2...0.2141.0) (2025-11-05)
+
+
+### Features
+
+* add RunQuery efficiency scoring to agent evaluations ([#17875](https://github.com/lightdash/lightdash/issues/17875)) ([17847bf](https://github.com/lightdash/lightdash/commit/17847bfb840e4ab99a7f3cd5bf526f0b5bb2bd6c))
+* store tool calls in the evaluation reports ([#17868](https://github.com/lightdash/lightdash/issues/17868)) ([f443868](https://github.com/lightdash/lightdash/commit/f44386840491099d937d8cffa2a3716cb66894fc))
+
+## [0.2140.2](https://github.com/lightdash/lightdash/compare/0.2140.1...0.2140.2) (2025-11-05)
+
+
+### Bug Fixes
+
+* border radius for pie charts based on segment size ([#17859](https://github.com/lightdash/lightdash/issues/17859)) ([3cf927f](https://github.com/lightdash/lightdash/commit/3cf927f424cf92329ce70c667fdbfbf1167d63d3)), closes [#17754](https://github.com/lightdash/lightdash/issues/17754)
+* border radius rules are not applying to horizontal bars ([#17881](https://github.com/lightdash/lightdash/issues/17881)) ([a047357](https://github.com/lightdash/lightdash/commit/a047357fa1bfb5296023ded7dd0293ba7771e934)), closes [#17765](https://github.com/lightdash/lightdash/issues/17765)
+
+## [0.2140.1](https://github.com/lightdash/lightdash/compare/0.2140.0...0.2140.1) (2025-11-05)
+
+
+### Bug Fixes
+
+* scale big number tiles better according to heigh available ([#17867](https://github.com/lightdash/lightdash/issues/17867)) ([398f657](https://github.com/lightdash/lightdash/commit/398f65701ecf57a3384b54cf7881ff592399fc7a))
+
+# [0.2140.0](https://github.com/lightdash/lightdash/compare/0.2139.2...0.2140.0) (2025-11-05)
+
+
+### Bug Fixes
+
+* embedManagement e2e unstable test ([#17869](https://github.com/lightdash/lightdash/issues/17869)) ([83c3e23](https://github.com/lightdash/lightdash/commit/83c3e2351479fb4fd8677f17f3cb07900512e935))
+
+
+### Features
+
+* allow changing table cell bars' color ([#17843](https://github.com/lightdash/lightdash/issues/17843)) ([ec8e8f1](https://github.com/lightdash/lightdash/commit/ec8e8f1f5f0fa1cfe7e08c183923c1f790ac6ad4))
+
+## [0.2139.2](https://github.com/lightdash/lightdash/compare/0.2139.1...0.2139.2) (2025-11-05)
+
+
+### Bug Fixes
+
+* bar display/cell on tables should have accurate width ([#17841](https://github.com/lightdash/lightdash/issues/17841)) ([640b39b](https://github.com/lightdash/lightdash/commit/640b39b2d263ee51035fd60848c9226241bdd5e8))
+
 ## [0.2139.1](https://github.com/lightdash/lightdash/compare/0.2139.0...0.2139.1) (2025-11-05)
 
 
